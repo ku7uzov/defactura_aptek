@@ -1,0 +1,39 @@
+<h3>Динамика изменения по препарату: {{ drug_name }}</h3>
+
+<canvas id="drugChart" width="600" height="300"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('drugChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ labels|safe }},
+            datasets: [{
+                label: 'Изменение количества аптек без препарата',
+                data: {{ data|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.3
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Изменение аптек'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Дата запроса'
+                    }
+                }
+            }
+        }
+    });
+</script>

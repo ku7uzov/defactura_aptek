@@ -529,13 +529,48 @@
                                     <small>Дата последнего запроса: {{ change.searched_at|date:"Y-m-d H:i" }}</small><br>
                                     <small>Дата предпоследнего запроса: {{ change.previous_searched_at|date:"Y-m-d H:i" }}</small>
                                 </td>
+                                <td>
+                                    <td>
+                                        <a href="{% url 'drug_chart' change.drug_id %}" style="color:black"> Узнать динамику: {{ change.drug_name }}</a>
+                                    </td>
+
+                                </td>
                             </tr>
+
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+<h5>Динамика всех изменений</h5>
+  <div class="card">
+                <div class="table-responsive">
+                    <table class="table align-items-center">
+                        <thead>
+                            <tr>
+                                <th>Препарат</th>
+                                <th>Дата текущего запроса</th>
+                                <th>Дата предыдущего запроса</th>
+                                <th>Изменение (аптек без препарата)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for change in all_changes %}
+                            <tr>
+                                <td>{{ change.drug_name }}</td>
+                                <td>{{ change.searched_at }}</td>
+                                <td>{{ change.previous_searched_at }}</td>
+                                <td style="color: {% if change.pharmacies_without_diff > 0 %}red{% else %}green{% endif %};">
+                                    {{ change.pharmacies_without_diff }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+  </div>
+
 
     <div class="col-lg-12 mb-lg-0 mb-4">
         <div class="card">
