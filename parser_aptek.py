@@ -66,4 +66,4 @@ def save_to_csv(pharmacies, filename="all_pharmacies.csv"):
 if __name__ == "__main__":
     data = scrape_pharmacies()
     save_to_csv(data)
-    print("✅ Данные сохранены в pharmacies.csv")
+    print("✅ Данные сохранены в dashboard.csv")

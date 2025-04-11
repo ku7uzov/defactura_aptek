@@ -6,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
 
-BASE_URL = "https://tabletka.by/result/?ls=9002"
 
 
 def create_driver() -> webdriver.Chrome:
@@ -103,6 +102,7 @@ def read_pharmacies_with_drug(file_name):
 
 
 # Основной алгоритм
+# Основной алгоритм
 def compare_pharmacies():
     # Чтение всех аптек
     all_pharmacies = read_pharmacies('all_pharmacies.csv')
@@ -135,7 +135,8 @@ def compare_pharmacies():
                 "phone": phone,
             }
 
-    # Записываем результат в новый файл
+    # Записываем результат в новый CSV
+    output_data = []
     with open('pharmacies_without_drug.csv', "w", newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(["Название аптеки", "Адрес", "Телефон", "Время работы", "Цена"])
@@ -143,13 +144,63 @@ def compare_pharmacies():
         for pharmacy in pharmacies_without_drug:
             if pharmacy in pharmacies_info:
                 info = pharmacies_info[pharmacy]
-                writer.writerow([pharmacy[0], pharmacy[1], info["phone"], info["work_time"], ""])
+                row = [pharmacy[0], pharmacy[1], info["phone"], info["work_time"], ""]
+                writer.writerow(row)
+                output_data.append(row)
 
     print("💾 Аптеки, в которых нет препарата, сохранены в pharmacies_without_drug.csv")
 
+    # ⬇️ Добавляем сохранение в Excel
+    save_to_excel("pharmacies_without_drug.xlsx", output_data, ["Название аптеки", "Адрес", "Телефон", "Время работы"])
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
+
+
+def save_search_to_db(drug_name, with_count, without_count):
+    from django.conf import settings
+    import os
+    import django
+
+    # Установка переменных окружения Django
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_name.settings')  # замените на имя вашего проекта
+    django.setup()
+
+    from defectura.dashboard.models import DrugSearchHistory  # замените meds на имя вашего приложения
+
+    DrugSearchHistory.objects.create(
+        drug_name=drug_name,
+        pharmacies_with=with_count,
+        pharmacies_without=without_count
+    )
+
+def save_to_excel(filename, data, headers):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Аптеки"
+
+    # Заголовки
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+        col_letter = get_column_letter(col_num)
+        ws.column_dimensions[col_letter].width = max(len(header) + 2, 15)
+
+    # Данные
+    for row_num, row_data in enumerate(data, 2):
+        for col_num, value in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+    wb.save(filename)
+    print(f"📊 Данные сохранены в {filename}")
+
+
 # Главная функция
-def main():
+def parser(item_id):
     driver = create_driver()
+    BASE_URL = f"https://tabletka.by/result/?ls={item_id}"
 
     print("🚀 Открываем страницу...")
     driver.get(BASE_URL)
@@ -180,7 +231,18 @@ def main():
     driver.quit()
 
     compare_pharmacies()
-
-
+import sys
 if __name__ == "__main__":
-    main()
+    # Получаем item_id из командной строки
+    if len(sys.argv) != 2:
+        print("❌ Ошибка: требуется передать item_id как аргумент командной строки.")
+        sys.exit(1)
+
+    try:
+        item_id = int(sys.argv[1])  # Преобразуем в int (если это число)
+    except ValueError:
+        print("❌ Ошибка: item_id должен быть числом.")
+        sys.exit(1)
+
+    # Запускаем парсер с переданным item_id
+    parser(item_id)

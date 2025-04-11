@@ -1,0 +1,161 @@
+<div class="card-body p-2 m-2" xmlns="http://www.w3.org/1999/html">
+    <table class="table table-hover table-striped">
+
+    {% if warnings %}
+<div class="alert alert-warning">
+    <ul>
+        {% for warning in warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if dangers %}
+<div class="alert alert-danger">
+    <ul>
+        {% for danger in dangers %}
+        <li>{{ danger }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if no_results_message %}
+<div class="alert alert-info">
+    <p>{{ no_results_message }}</p>
+    <ul>
+        {% for suggestion in suggestions %}
+        <li>{{ suggestion }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if tablets %}
+  {% for tablet in tablets %}
+
+    <tr class="border-bottom">
+      <td class="align-middle text-sm py-3">
+        <div class="d-flex justify-content-between flex-wrap">
+          <div class="me-4">
+            <p class="text-xs font-weight-bold mb-0">Наименование</p>
+            <h6 class="text-sm mb-0">{{ tablet.name }}</h6>
+          </div>
+          <div class="me-4">
+            <p class="text-xs font-weight-bold mb-0">Форма</p>
+            <h6 class="text-sm mb-0">{{ tablet.form }}</h6>
+          </div>
+          <div class="me-4">
+            <p class="text-xs font-weight-bold mb-0">МНН</p>
+            <h6 class="text-sm mb-0">{{ tablet.mnn_name }}</h6>
+          </div>
+          <div class="me-4">
+            <p class="text-xs font-weight-bold mb-0">Производитель</p>
+            <h6 class="text-sm mb-0">{{ tablet.produce }}</h6>
+          </div>
+          <div>
+            <p class="text-xs font-weight-bold mb-0">Дефектура </p>
+            <h6 class="text-sm mb-0">{{ tablet.pharmacy_diff }}</h6>
+          </div>
+             <div>
+            <p class="text-xs font-weight-bold mb-0">Наличие </p>
+            <h6 class="text-sm mb-0">{{ tablet.pharmacy_info }}</h6>
+          </div>
+             <div>
+            <p class="text-xs font-weight-bold mb-0">Дефектура</p>
+                  <a href="{% url 'run_parser_and_download' tablet.item_id %}?name={{ tablet.name }}&form={{ tablet.form }}">Скачать</a>
+
+          </div>
+
+          </div>
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="1">
+      <div class="text-center mx-3 py-4">
+        <h4 class="text-muted">Нет данных</h4>
+      </div>
+    </td>
+  </tr>
+{% endif %}
+
+
+    </table>
+</div>
+
+<style>
+.heart-icon {
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    position: absolute;
+    top: 12px;
+    right: 24px;
+    transition: transform 0.2s ease-in-out, opacity 0.2s;
+}
+
+/* Увеличиваем сердечко при наведении */
+.heart-icon:hover {
+    transform: scale(1.2);
+}
+
+/* Когда сердечко в избранном */
+.heart-icon.liked {
+    opacity: 1;
+    transform: scale(2.4);
+}
+
+
+
+</style>
+<script>
+     document.querySelectorAll('.download-form').forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault(); // Отменяем стандартную отправку формы
+
+                    // Показать лоадер
+                    showLoader();
+
+                    // Отправляем форму через fetch
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,  // Добавляем CSRF токен
+                        },
+                        body: new URLSearchParams(new FormData(form)).toString()
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Ошибка при загрузке файла');
+                        }
+                        return response.blob();  // Преобразуем ответ в blob (файл)
+                    })
+                    .then(blob => {
+                        // Создаем ссылку для скачивания
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = URL.createObjectURL(blob);
+                        downloadLink.download = 'file_name.xlsx';  // Замените на имя вашего файла
+                        downloadLink.click();  // Инициализируем скачивание
+
+                        // Скрыть лоадер после скачивания
+                        hideLoader();
+                    })
+                    .catch(error => {
+                        console.error("Ошибка при скачивании файла:", error);
+
+                        // Скрыть лоадер в случае ошибки
+                        hideLoader();
+                    });
+                });
+            });
+        });
+</script>
+
+
+
+
