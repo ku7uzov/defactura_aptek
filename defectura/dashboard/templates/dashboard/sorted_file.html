@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %} Сортировка базы данных {% endblock %}
+
+{% block content %}
+ <div class="col-md-12 mb-lg-0 mb-4">
+            <div class="card mt-4 shadow-sm border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0" style="color:white;">📈 Сортировка базы данных</h6>
+    </div>
+                <div class="card-body">
+                  <div class="row">
+                     <form id="file-upload-form" class="form-control" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="file" id="file" required class="btn bg-gradient-white mb-0">
+                        <button type="submit" class="btn bg-gradient-success mb-0">Загрузить и отсортировать</button>
+                     </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+<div id="loader" style="display:none;">Загрузка...</div>
+<div id="error-message" style="display:none;"></div>
+
+
+<script>
+document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Отменяем стандартное поведение формы
+
+    const formData = new FormData(this); // Получаем данные из формы
+    const loader = document.getElementById('loader');
+    const errorMessage = document.getElementById('error-message');
+
+    // Показываем лоадер
+    loader.style.display = 'flex';
+    errorMessage.style.display = 'none';
+
+    fetch('/sort-file/', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        // Скрыть лоадер
+        loader.style.display = 'none';
+
+        // Создаём ссылку для скачивания отсортированного файла
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = 'sorted_file.xlsx';
+        downloadLink.click();
+    })
+    .catch(error => {
+        console.error('Ошибка при загрузке файла:', error);
+        loader.style.display = 'none';
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = 'Произошла ошибка при обработке файла.';
+    });
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Отменяем стандартное поведение формы
+
+    const formData = new FormData(this); // Получаем данные из формы
+    const loader = document.getElementById('loader');
+    const errorMessage = document.getElementById('error-message');
+
+    // Показываем лоадер
+    loader.style.display = 'flex';
+    errorMessage.style.display = 'none';
+
+    fetch('/sort-file/', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        // Скрыть лоадер
+        loader.style.display = 'none';
+
+        // Создаём ссылку для скачивания отсортированного файла
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = 'sorted_file.xlsx';
+        downloadLink.click();
+    })
+    .catch(error => {
+        console.error('Ошибка при загрузке файла:', error);
+        loader.style.display = 'none';
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = 'Произошла ошибка при обработке файла.';
+    });
+});
+</script>
+{% endblock %}

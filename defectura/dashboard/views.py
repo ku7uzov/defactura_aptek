@@ -117,9 +117,8 @@ from django.shortcuts import render
 def run_parser_and_download(request, item_id):
     # Запуск парсера с item_id
     try:
-
-        name = request.GET.get('name')
-        form = request.GET.get('form')
+        name = request.POST.get('name')
+        form = request.POST.get('form')
 
         region_url = f"https://tabletka.by/result/?ls={item_id}&region=0"
         response = requests.get(region_url, headers={"User-Agent": "Mozilla/5.0"})
@@ -198,6 +197,69 @@ def search_tablets(request):
     }).content
 
     return HttpResponse(html_content)
+
+
+
+def sorted_file(request):
+    return render(request, "dashboard/sorted_file.html", )
+
+
+
+def history(request):
+    # Получаем все записи, отсортированные по времени
+    history = DrugSearchHistory.objects.order_by('-searched_at')  # Последние запросы первыми
+
+    # Группируем записи по названию препарата
+    drug_history = defaultdict(list)
+    for record in history:
+        drug_history[(record.drug_id, record.drug_name)].append(record)
+
+    # Храним динамику изменений по каждому препарату
+    all_changes = []
+    last_change_by_drug = []
+
+    for (drug_id, drug_name), records in drug_history.items():
+        for i in range(1, len(records)):
+            prev = records[i - 1]
+            curr = records[i]
+
+            diff = curr.pharmacies_without - prev.pharmacies_without
+            if diff != 0:
+                change = {
+                    'drug_name': drug_name,
+                    'pharmacies_without_diff': diff,
+                    'searched_at': curr.searched_at,
+                    'previous_searched_at': prev.searched_at
+                }
+                all_changes.append(change)
+
+        # Добавим последнюю разницу отдельно, если нужно отобразить на графике
+        if len(records) > 1:
+            last = records[-1]
+            prev = records[-2]
+            diff = last.pharmacies_without - prev.pharmacies_without
+            last_change_by_drug.append({
+                'drug_id': drug_id,
+                'drug_name': drug_name,
+                'pharmacies_without_diff': diff,
+                'searched_at': last.searched_at,
+                'previous_searched_at': prev.searched_at
+            })
+
+    # Подготовка данных для графика (только последние изменения)
+    labels = [change['drug_name'] for change in last_change_by_drug]
+    data = [change['pharmacies_without_diff'] for change in last_change_by_drug]
+
+    return render(request, "dashboard/history.html", {
+        "history": history,
+        "drug_changes": last_change_by_drug,  # Для графика и последнего отображения
+        "chart_labels": labels,
+        "chart_data": data,
+        "all_changes": all_changes  # Вся динамика изменений по всем препаратам
+    })
+
+
+
 
 
 import os
@@ -314,3 +376,113 @@ def process_phone_file(request):
 
     return render(request, "dashboard/error.html", {"message": "Неверный запрос."})
 
+
+
+
+def search_table(request):
+    # Получаем все записи, отсортированные по времени
+    history = DrugSearchHistory.objects.order_by("drug_id",'drug_name', 'searched_at')
+
+    # Группируем записи по названию препарата
+    drug_history = defaultdict(list)
+    for record in history:
+        drug_history[(record.drug_id, record.drug_name)].append(record)
+
+    # Храним динамику изменений по каждому препарату
+    all_changes = []
+    last_change_by_drug = []
+
+    for (drug_id, drug_name), records in drug_history.items():
+        for i in range(1, len(records)):
+            prev = records[i - 1]
+            curr = records[i]
+
+            diff = curr.pharmacies_without - prev.pharmacies_without
+            if diff != 0:
+                change = {
+                    'drug_name': drug_name,
+                    'pharmacies_without_diff': diff,
+                    'searched_at': curr.searched_at,
+                    'previous_searched_at': prev.searched_at
+                }
+                all_changes.append(change)
+
+        # Добавим последнюю разницу отдельно, если нужно отобразить на графике
+        if len(records) > 1:
+            last = records[-1]
+            prev = records[-2]
+            diff = last.pharmacies_without - prev.pharmacies_without
+            last_change_by_drug.append({
+                'drug_id': drug_id,
+                'drug_name': drug_name,
+                'pharmacies_without_diff': diff,
+                'searched_at': last.searched_at,
+                'previous_searched_at': prev.searched_at
+            })
+
+    # Подготовка данных для графика (только последние изменения)
+    labels = [change['drug_name'] for change in last_change_by_drug]
+    data = [change['pharmacies_without_diff'] for change in last_change_by_drug]
+
+    return render(request, "dashboard/search.html", {
+        "history": history,
+        "drug_changes": last_change_by_drug,   # Для графика и последнего отображения
+        "chart_labels": labels,
+        "chart_data": data,
+        "all_changes": all_changes             # Вся динамика изменений по всем препаратам
+    })
+
+
+
+def dynamic(request):
+    # Получаем все записи, отсортированные по времени
+    history = DrugSearchHistory.objects.order_by("drug_id", 'drug_name', 'searched_at')
+
+    # Группируем записи по названию препарата
+    drug_history = defaultdict(list)
+    for record in history:
+        drug_history[(record.drug_id, record.drug_name)].append(record)
+
+    # Храним динамику изменений по каждому препарату
+    all_changes = []
+    last_change_by_drug = []
+
+    for (drug_id, drug_name), records in drug_history.items():
+        for i in range(1, len(records)):
+            prev = records[i - 1]
+            curr = records[i]
+
+            diff = curr.pharmacies_without - prev.pharmacies_without
+            if diff != 0:
+                change = {
+                    'drug_name': drug_name,
+                    'pharmacies_without_diff': diff,
+                    'searched_at': curr.searched_at,
+                    'previous_searched_at': prev.searched_at
+                }
+                all_changes.append(change)
+
+        # Добавим последнюю разницу отдельно, если нужно отобразить на графике
+        if len(records) > 1:
+            last = records[-1]
+            prev = records[-2]
+            diff = last.pharmacies_without - prev.pharmacies_without
+            last_change_by_drug.append({
+                'drug_id': drug_id,
+                'drug_name': drug_name,
+                'pharmacies_without_diff': diff,
+                'searched_at': last.searched_at,
+                'previous_searched_at': prev.searched_at
+            })
+
+    # Подготовка данных для графика (только последние изменения)
+    labels = [change['drug_name'] for change in last_change_by_drug]
+    data = [change['pharmacies_without_diff'] for change in last_change_by_drug]
+
+    return render(request, "dashboard/dynamic.html", {
+        "history": history,
+        "drug_changes": last_change_by_drug,  # Для графика и последнего отображения
+        "chart_labels": labels,
+        "chart_data": data,
+        "all_changes": all_changes  # Вся динамика изменений по всем препаратам
+    })

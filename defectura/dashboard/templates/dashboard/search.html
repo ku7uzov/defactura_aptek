@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Поиск дефектуры{% endblock %}
+
+{% block content %}
+<div class="col-md-12 mb-4">
+  <div class="card mt-4 shadow-sm border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0" style="color: white">🔎 Поиск препарата по аптекам</h6>
+    </div>
+
+    <div class="card-body">
+      <form method="get" action="{% url 'dashboard' %}" id="search-form" class="row g-2 align-items-center">
+        <div class="col-md-8">
+          <input type="text" class="form-control form-control-lg" placeholder="Введите название препарата или МНН" name="query" id="query" value="{{ query }}">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-success w-100" type="submit">🔍 Поиск</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card mt-4 shadow-sm border-0">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">📋 Результаты поиска</h6>
+    </div>
+    <div class="card-body">
+      <div id="results">
+        <!-- Здесь будут отображаться результаты -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const searchForm = document.getElementById("search-form");
+    const queryInput = document.getElementById("query");
+    const overlay = document.getElementById("overlay");
+    const resultsContainer = document.getElementById("results");
+
+    searchForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const query = queryInput.value.trim();
+      if (!query) return;
+
+      // Показываем overlay
+      overlay.style.display = "flex";
+
+      // Отправляем AJAX запрос
+      fetch(`/search/tablets/?query=${encodeURIComponent(query)}&selected-region=0`, {
+        method: "GET",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+        .then(response => response.text())
+        .then(html => {
+          resultsContainer.innerHTML = html;
+        })
+        .catch(error => {
+          resultsContainer.innerHTML = `<div class="alert alert-danger">Произошла ошибка при загрузке данных.</div>`;
+          console.error("Ошибка при получении данных:", error);
+        })
+        .finally(() => {
+          // Прячем overlay после получения данных
+          overlay.style.display = "none";
+        });
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const overlay = document.getElementById("overlay");
+
+    // Перехват формы поиска — уже есть
+    const searchForm = document.getElementById("search-form");
+    const queryInput = document.getElementById("query");
+    const resultsContainer = document.getElementById("results");
+
+    // 🔄 Перехват всех форм с классом "download-form"
+    document.addEventListener("submit", function (event) {
+      const form = event.target;
+
+      if (form.classList.contains("download-form")) {
+        event.preventDefault();
+
+        const url = form.getAttribute("data-url");
+        const formData = new FormData(form);
+
+        overlay.style.display = "flex";
+
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": form.querySelector('input[name=csrfmiddlewaretoken]').value
+          },
+          body: formData,
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Ошибка при скачивании файла.");
+          }
+
+          return response.blob();
+        })
+        .then(blob => {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = "дефектура.xlsx"; // Или получи из response.headers, если надо
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+        })
+        .catch(error => {
+          alert("Ошибка: " + error.message);
+        })
+        .finally(() => {
+          overlay.style.display = "none";
+        });
+      }
+    });
+  });
+</script>
+
+
+{% endblock %}
+
+<style>
+  /* Стили для затемнения экрана */
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .spinner-border {
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite; /* Анимация вращения */
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Стили для кнопки "Скачать" */
+  .btn {
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
+    padding: 12px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background-color: #0056b3;
+  }
+
+  /* Дополнительные стили для таблиц */
+  table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+  }
+
+  table th, table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+
+  table th {
+    background-color: #f8f9fa;
+  }
+
+  table td {
+    background-color: #fff;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+</style>

@@ -64,7 +64,15 @@
           </div>
              <div>
             <p class="text-xs font-weight-bold mb-0">Дефектура</p>
-                  <a href="{% url 'run_parser_and_download' tablet.item_id %}?name={{ tablet.name }}&form={{ tablet.form }}">Скачать</a>
+<!--                  <a href="{% url 'run_parser_and_download' tablet.item_id %}?name={{ tablet.name }}&form={{ tablet.form }}">Скачать</a>-->
+           <form method="POST"
+                          class="download-form"
+                          data-url="{% url 'run_parser_and_download' tablet.item_id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="name" value="{{ tablet.name }}">
+                      <input type="hidden" name="form" value="{{ tablet.form }}">
+                      <button type="submit" class="btn btn-link" style="padding:0px;margin:0px;">Скачать</button>
+                    </form>
 
           </div>
 
@@ -87,74 +95,24 @@
     </table>
 </div>
 
-<style>
-.heart-icon {
-    width: 28px;
-    height: 28px;
-    cursor: pointer;
-    position: absolute;
-    top: 12px;
-    right: 24px;
-    transition: transform 0.2s ease-in-out, opacity 0.2s;
-}
+<div id="overlay" style="
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 1.5rem;
+">
+    <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+    </div>
+    <span class="ms-3">Идёт обработка, пожалуйста подождите...</span>
+</div>
 
-/* Увеличиваем сердечко при наведении */
-.heart-icon:hover {
-    transform: scale(1.2);
-}
-
-/* Когда сердечко в избранном */
-.heart-icon.liked {
-    opacity: 1;
-    transform: scale(2.4);
-}
-
-
-
-</style>
-<script>
-     document.querySelectorAll('.download-form').forEach(form => {
-                form.addEventListener('submit', function(event) {
-                    event.preventDefault(); // Отменяем стандартную отправку формы
-
-                    // Показать лоадер
-                    showLoader();
-
-                    // Отправляем форму через fetch
-                    fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,  // Добавляем CSRF токен
-                        },
-                        body: new URLSearchParams(new FormData(form)).toString()
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Ошибка при загрузке файла');
-                        }
-                        return response.blob();  // Преобразуем ответ в blob (файл)
-                    })
-                    .then(blob => {
-                        // Создаем ссылку для скачивания
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = URL.createObjectURL(blob);
-                        downloadLink.download = 'file_name.xlsx';  // Замените на имя вашего файла
-                        downloadLink.click();  // Инициализируем скачивание
-
-                        // Скрыть лоадер после скачивания
-                        hideLoader();
-                    })
-                    .catch(error => {
-                        console.error("Ошибка при скачивании файла:", error);
-
-                        // Скрыть лоадер в случае ошибки
-                        hideLoader();
-                    });
-                });
-            });
-        });
-</script>
 
 
 

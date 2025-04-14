@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}История поиска{% endblock %}
+
+{% block content %}
+<div class="col-md-12 mb-4">
+       <div class="card mt-4 shadow-sm border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0" style="color: white">📈 История поиска препаратов</h6>
+    </div>
+
+    <div class="card-body">
+      <!-- Фильтры -->
+      <form class="mb-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-4">
+            <input type="text" id="drugFilter" class="form-control form-control-sm" placeholder="🔎 Название препарата (A-Я)">
+          </div>
+          <div class="col-md-2">
+            <select id="alphabeticalSort" class="form-select form-select-sm">
+              <option value="asc">A - Я</option>
+              <option value="desc">Я - A</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <input type="date" id="startDate" class="form-control form-control-sm" aria-label="Дата с">
+          </div>
+          <div class="col-md-2">
+            <input type="date" id="endDate" class="form-control form-control-sm" aria-label="Дата по">
+          </div>
+          <div class="col-auto">
+            <button type="button" id="filterBtn" class="btn btn-primary btn-sm">
+              <i class="bi bi-funnel-fill"></i> Фильтровать
+            </button>
+          </div>
+          <div class="col-auto">
+            <button type="button" id="resetBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-x-circle"></i> Сброс
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Таблица -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-sm" id="drugHistoryTable">
+          <thead class="table-light">
+            <tr>
+              <th>Название препарата</th>
+              <th>Форма препарата</th>
+              <th>Аптек с препаратом</th>
+              <th>Аптек без препарата</th>
+              <th>Дата и время запроса</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in history %}
+            <tr class="record">
+              <td>{{ record.drug_name }}</td>
+              <td>{{ record.drug_form }}</td>
+              <td>{{ record.pharmacies_with }}</td>
+              <td>{{ record.pharmacies_without }}</td>
+              <td>{{ record.searched_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted">Нет записей</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const drugFilter = document.getElementById('drugFilter');
+  const startDate = document.getElementById('startDate');
+  const endDate = document.getElementById('endDate');
+  const resetBtn = document.getElementById('resetBtn');
+  const sortSelect = document.getElementById('alphabeticalSort');
+
+  [drugFilter, startDate, endDate].forEach(el => el.addEventListener('input', filterTable));
+  sortSelect.addEventListener('change', sortTable);
+  resetBtn.addEventListener('click', () => {
+    drugFilter.value = '';
+    startDate.value = '';
+    endDate.value = '';
+    sortSelect.value = 'asc';
+    filterTable();
+    sortTable();
+  });
+
+  function filterTable() {
+    const name = drugFilter.value.toLowerCase();
+    const start = startDate.value ? new Date(startDate.value) : null;
+    const end = endDate.value ? new Date(endDate.value) : null;
+    const rows = document.querySelectorAll('#drugHistoryTable tbody .record');
+
+    rows.forEach(row => {
+      const drugName = row.cells[0].textContent.toLowerCase();
+      const recordDate = new Date(row.cells[4].textContent);
+      const matchName = drugName.includes(name);
+      const matchStart = start ? recordDate >= start : true;
+      const matchEnd = end ? recordDate <= end : true;
+      row.style.display = (matchName && matchStart && matchEnd) ? '' : 'none';
+    });
+  }
+
+  function sortTable() {
+    const table = document.getElementById('drugHistoryTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('.record'));
+
+    const sortOrder = sortSelect.value; // asc or desc
+    rows.sort((a, b) => {
+      const nameA = a.cells[0].textContent.toLowerCase();
+      const nameB = b.cells[0].textContent.toLowerCase();
+      if (sortOrder === 'asc') {
+        return nameA.localeCompare(nameB, 'ru');
+      } else {
+        return nameB.localeCompare(nameA, 'ru');
+      }
+    });
+
+    // Перерисовать строки
+    rows.forEach(row => tbody.appendChild(row));
+  }
+
+  // начальная сортировка при загрузке
+  // window.addEventListener('DOMContentLoaded', () => {
+  //   sortTable();
+  // });
+</script>
+
+{% endblock %}
