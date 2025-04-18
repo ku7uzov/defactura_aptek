@@ -18,30 +18,17 @@ def parse_pharmacy_row(row):
     except:
         address = ""
 
-    try:
-        work_times = [li.text.strip() for li in row.select('.address .tooltip-info-body .tooltip-info-list li')]
-        work_times = "; ".join(work_times)
-    except:
-        work_times = ""
 
     try:
         phone = row.select_one('.phone a').text.strip()
     except:
         phone = ""
 
-    try:
-        lat = row.select_one('.tooltip-info-link a')['data-lat']
-        lon = row.select_one('.tooltip-info-link a')['data-lon']
-    except:
-        lat = lon = ""
 
     return {
         'Название': name,
         'Адрес': address,
-        'Время работы': work_times,
         'Телефон': phone,
-        'Широта': lat,
-        'Долгота': lon
     }
 
 def scrape_pharmacies():
@@ -56,7 +43,7 @@ def scrape_pharmacies():
             pharmacies.append(pharmacy)
     return pharmacies
 
-def save_to_csv(pharmacies, filename="all_pharmacies.csv"):
+def save_to_csv(pharmacies, filename="all_pharmacies_2.csv"):
     keys = pharmacies[0].keys()
     with open(filename, "w", newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=keys)

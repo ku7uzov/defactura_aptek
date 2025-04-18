@@ -114,7 +114,7 @@
           const downloadUrl = window.URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = downloadUrl;
-          a.download = "дефектура.xlsx"; // Или получи из response.headers, если надо
+          a.download = "defectura.xlsx"; // Или получи из response.headers, если надо
           document.body.appendChild(a);
           a.click();
           a.remove();

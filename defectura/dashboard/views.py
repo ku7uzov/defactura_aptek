@@ -1,14 +1,10 @@
+
+
+
 import requests
 from bs4 import BeautifulSoup
-from django.http import HttpResponse
-from django.shortcuts import render
 
-from .models import DrugSearchHistory
-from .utils import parse_tablets
-from django.http import FileResponse
-import time
-import subprocess
-import os
+from .utils import parse_tablets,parser
 
 
 def save_search_to_db(drug_id,drug_name,drug_form, with_count, without_count):
@@ -28,9 +24,10 @@ def save_search_to_db(drug_id,drug_name,drug_form, with_count, without_count):
         pharmacies_with=with_count,
         pharmacies_without=without_count
     )
-from django.shortcuts import render
+
+
 from .models import DrugSearchHistory
-from collections import defaultdict
+
 
 def dashboard(request):
     # Получаем все записи, отсортированные по времени
@@ -84,17 +81,19 @@ def dashboard(request):
         "chart_data": data,
         "all_changes": all_changes             # Вся динамика изменений по всем препаратам
     })
+from collections import defaultdict
 
 def drug_chart(request, drug_id):
-    # Фильтруем изменения только для нужного препарата
     history = DrugSearchHistory.objects.filter(drug_id=drug_id).order_by('searched_at')
 
-    drug_name = history[0].drug_name  # Берём название препарата из первой записи
+    if not history:
+        return HttpResponse("Нет данных для выбранного препарата.")
 
-    # Готовим список изменений
+    drug_name = history[0].drug_name
+
+    # --- Подготовка графика изменений по времени ---
     labels = []
     data = []
-
     for i in range(1, len(history)):
         prev = history[i - 1]
         curr = history[i]
@@ -102,18 +101,83 @@ def drug_chart(request, drug_id):
         labels.append(curr.searched_at.strftime('%d.%m %H:%M'))
         data.append(diff)
 
+    # --- Группировка по дате (берем последнюю запись на день) ---
+    daily_stats = {}
+    for entry in history:
+        date = entry.searched_at.date()
+        daily_stats[date] = entry  # перезапись = берём последнюю запись на день
+
+    # --- Подготовка таблицы ---
+    table_data = []
+    sorted_dates = sorted(daily_stats.keys())
+    for i, date in enumerate(sorted_dates):
+        entry = daily_stats[date]
+        row = {
+            'date': date.strftime('%d.%m.%Y'),
+            'with': entry.pharmacies_with,
+            'without': entry.pharmacies_without,
+            'diff_with': None,
+            'diff_without': None,
+        }
+
+        if i > 0:
+            prev_entry = daily_stats[sorted_dates[i - 1]]
+            row['diff_with'] = entry.pharmacies_with - prev_entry.pharmacies_with
+            row['diff_without'] = entry.pharmacies_without - prev_entry.pharmacies_without
+
+        table_data.append(row)
+    history = DrugSearchHistory.objects.filter(drug_id=drug_id).order_by('searched_at')
+
+    if not history:
+        return HttpResponse("Нет данных для выбранного препарата.")
+
+    drug_name = history[0].drug_name
+
+    # --- Группируем по дате (последняя запись на день) ---
+    daily_stats = {}
+    for entry in history:
+        date = entry.searched_at.date()
+        daily_stats[date] = entry  # последняя запись на день
+
+    # Сортируем даты
+    sorted_dates = sorted(daily_stats.keys())
+
+    # Формируем данные по датам
+    dates = [d.strftime('%d.%m.%Y') for d in sorted_dates]
+    with_data = []
+    without_data = []
+    dynamics = []
+
+    for i, date in enumerate(sorted_dates):
+        entry = daily_stats[date]
+        with_data.append(entry.pharmacies_with)
+        without_data.append(entry.pharmacies_without)
+
+        if i == 0:
+            dynamics.append(None)
+        else:
+            diff = entry.pharmacies_with - daily_stats[sorted_dates[i - 1]].pharmacies_with
+            dynamics.append(diff)
+
     return render(request, 'dashboard/drug_chart.html', {
         'drug_name': drug_name,
         'labels': labels,
         'data': data,
+        'table_data': table_data,
+        # 'drug_name': drug_name,
+        'dates': dates,
+        'with_data': with_data,
+        'without_data': without_data,
+        'dynamics': dynamics,
     })
 
-
-import os
 import subprocess
 from django.http import FileResponse
-from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
+@csrf_exempt
+@require_POST
 def run_parser_and_download(request, item_id):
     # Запуск парсера с item_id
     try:
@@ -126,9 +190,6 @@ def run_parser_and_download(request, item_id):
         price_cnt_tag = soup.find("span", class_="price-cnt")
         pharmacy_info = int(price_cnt_tag.text.strip()) if price_cnt_tag else 0
 
-        # name = f"Препарат {item_id}"
-        # form = "таблетки"  # Пример, замени при необходимости
-
         # Шаг 3: Сохранение в историю
         save_search_to_db(
             drug_id=item_id,
@@ -138,32 +199,20 @@ def run_parser_and_download(request, item_id):
             without_count= 4283 - pharmacy_info  # Или сколько всего аптек у тебя
         )
 
+        print('subprocess start')
+        # Генерация уникального имени файла для каждого пользователя
+        filename = f"pharmacies_without_drug.xlsx"
+        parser(item_id)
 
-        # Вызываем парсер с передачей item_id
-        result = subprocess.run(
-            ["python", "parser_pharm.py", str(item_id)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=False,  # Возвращает stdout и stderr как строки
-            encoding = 'utf-8',  # Указываем кодировку
+        # Запуск парсера
 
 
-        )
-
-        # Печать вывода для отладки
-        # print("STDOUT:", result.stdout)
-        # print("STDERR:", result.stderr)
-
-        # Проверка на ошибки
-        if result.returncode != 0:
-            return render(request, "dashboard/error.html", {"message": f"Ошибка при выполнении парсера: {result.stderr}"})
+        print('process end')
 
         # Путь к файлу после генерации
-        file_path = "pharmacies_without_drug.xlsx"
-
-        if os.path.exists(file_path):
+        if os.path.exists(filename):
             # Отправляем файл для скачивания
-            response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename="pharmacies_without_drug.xlsx")
+            response = FileResponse(open(filename, 'rb'), as_attachment=True, filename="pharmacies_without_drug.xlsx")
             return response
         else:
             return render(request, "dashboard/error.html", {"message": "Файл не найден."})
@@ -259,17 +308,83 @@ def history(request):
     })
 
 
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.core.files.storage import default_storage
 
+
+@csrf_exempt
+@require_POST
+def sort_file(request):
+    uploaded_file = request.FILES['file']
+    file_path = default_storage.save('temp_pharmacy.xlsx', uploaded_file)
+
+    # Загружаем аптеки
+    pharmacies_df = pd.read_excel(file_path)
+    pharmacies = [
+        {
+            'name': row['Название аптеки'],
+            'address': row['Адрес'],
+            'phone': row['Телефон']
+        }
+        for _, row in pharmacies_df.iterrows()
+    ]
+
+    # Загружаем фармацевтов
+    pharmacists = []
+    with open('pharmacevty.csv', 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=';')
+        next(reader)
+        for row in reader:
+            pharmacists.append({
+                'name': row[0],
+                'phone': row[1],
+                'workplace': row[2],
+                'location': row[3],
+                'pharmacy_name': row[4]
+            })
+
+    # Сопоставляем
+    result = []
+    matched_pharmacies = set()
+
+    for pharmacist in pharmacists:
+        for pharmacy in pharmacies:
+            if pharmacy['name'] == pharmacist['pharmacy_name']:
+                result.append({
+                    'Аптека': pharmacy['name'],
+                    'Местоположение аптеки': pharmacy['address'],
+                    'Номер телефона аптеки': pharmacy['phone'],
+                    'ФИО': pharmacist['name'],
+                    'Телефон фармацевта': pharmacist['phone'],
+                })
+                matched_pharmacies.add(pharmacy['name'])
+
+    # Добавляем аптеки без фармацевтов
+    for pharmacy in pharmacies:
+        if pharmacy['name'] not in matched_pharmacies:
+            result.append({
+                'Аптека': pharmacy['name'],
+                'Местоположение аптеки': pharmacy['address'],
+                'Номер телефона аптеки': pharmacy['phone'],
+                'ФИО': '',
+                'Телефон фармацевта': '',
+            })
+
+    # Создаём Excel
+    output_df = pd.DataFrame(result)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=sorted_file.xlsx'
+    output_df.to_excel(response, index=False)
+
+    return response
 
 
 import os
 import re
-import pandas as pd
 from django.core.files.storage import FileSystemStorage
-from django.http import HttpResponse
-from django.shortcuts import render
 from io import BytesIO
-from openpyxl import Workbook
+
 
 def process_phone_file(request):
     if request.method == 'POST' and request.FILES.get('file'):
@@ -486,3 +601,80 @@ def dynamic(request):
         "chart_data": data,
         "all_changes": all_changes  # Вся динамика изменений по всем препаратам
     })
+
+
+import pandas as pd
+import csv
+import io
+from django.http import HttpResponse
+from django.shortcuts import render
+from .forms import FileUploadForm
+
+def upload_files(request):
+    if request.method == 'POST':
+        form = FileUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            pharmacies_file = request.FILES['pharmacies_file']
+            pharmacists_file = request.FILES['pharmacists_file']
+
+            pharmacies_df = pd.read_excel(pharmacies_file)
+            pharmacies = []
+            for _, row in pharmacies_df.iterrows():
+                pharmacies.append({
+                    'name': row['Название аптеки'],
+                    'address': row['Адрес'],
+                    'phone': row['Телефон']
+                })
+
+            pharmacists = []
+            stream = io.StringIO(pharmacists_file.read().decode('utf-8'))
+            reader = csv.reader(stream, delimiter=';')
+            next(reader)
+            for row in reader:
+                pharmacists.append({
+                    'name': row[0],
+                    'phone': row[1],
+                    'workplace': row[2],
+                    'location': row[3],
+                    'pharmacy_name': row[4]
+                })
+
+            result = []
+            matched_pharmacies = set()
+
+            for pharmacist in pharmacists:
+                for pharmacy in pharmacies:
+                    if pharmacy['name'] == pharmacist['pharmacy_name']:
+                        result.append({
+                            'Аптека': pharmacy['name'],
+                            'Местоположение аптеки': pharmacy['address'],
+                            'Номер телефона аптеки': pharmacy['phone'],
+                            'ФИО': pharmacist['name'],
+                            'Телефон фармацевта': pharmacist['phone'],
+                        })
+                        matched_pharmacies.add(pharmacy['name'])
+
+            for pharmacy in pharmacies:
+                if pharmacy['name'] not in matched_pharmacies:
+                    result.append({
+                        'Аптека': pharmacy['name'],
+                        'Местоположение аптеки': pharmacy['address'],
+                        'Номер телефона аптеки': pharmacy['phone'],
+                        'ФИО': '',
+                        'Телефон фармацевта': '',
+                    })
+
+            output = io.BytesIO()
+            output_df = pd.DataFrame(result)
+            output_df.to_excel(output, index=False)
+            output.seek(0)
+
+            response = HttpResponse(
+                output,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = 'attachment; filename=pharmacies_with_pharmacists.xlsx'
+            return response
+    else:
+        form = FileUploadForm()
+    return render(request, 'upload_form.html', {'form': form})

@@ -9,6 +9,7 @@
       <h6 class="mb-0" style="color:white;">📈 Сортировка базы данных</h6>
     </div>
                 <div class="card-body">
+                    <h5> Прикрепите файл чтобы найти фармацевтов</h5>
                   <div class="row">
                      <form id="file-upload-form" class="form-control" method="POST" enctype="multipart/form-data">
                         {% csrf_token %}
@@ -22,42 +23,6 @@
 <div id="loader" style="display:none;">Загрузка...</div>
 <div id="error-message" style="display:none;"></div>
 
-
-<script>
-document.getElementById('file-upload-form').addEventListener('submit', function(event) {
-    event.preventDefault(); // Отменяем стандартное поведение формы
-
-    const formData = new FormData(this); // Получаем данные из формы
-    const loader = document.getElementById('loader');
-    const errorMessage = document.getElementById('error-message');
-
-    // Показываем лоадер
-    loader.style.display = 'flex';
-    errorMessage.style.display = 'none';
-
-    fetch('/sort-file/', {
-        method: 'POST',
-        body: formData,
-    })
-    .then(response => response.blob())
-    .then(blob => {
-        // Скрыть лоадер
-        loader.style.display = 'none';
-
-        // Создаём ссылку для скачивания отсортированного файла
-        const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(blob);
-        downloadLink.download = 'sorted_file.xlsx';
-        downloadLink.click();
-    })
-    .catch(error => {
-        console.error('Ошибка при загрузке файла:', error);
-        loader.style.display = 'none';
-        errorMessage.style.display = 'block';
-        errorMessage.textContent = 'Произошла ошибка при обработке файла.';
-    });
-});
-</script>
 {% endblock %}
 
 {% block scripts %}

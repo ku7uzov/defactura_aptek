@@ -5,26 +5,36 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import sys
-
-
+import tempfile
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+# from webdriver_manager.chrome import ChromeDriverManager
 
 def create_driver() -> webdriver.Chrome:
     options = Options()
     # options.add_argument("--headless")  # включи при необходимости
-    options.add_argument("--disable-gpu")
-    return webdriver.Chrome(options=options)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    user_data_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+    driver =  webdriver.Chrome(options=options)
+    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    # временная уникальная папка для профиля
+
+    return driver
 
 
 # Установить отображение 100 аптек на странице
 def set_items_per_page(driver: webdriver.Chrome) -> None:
     try:
-        # try:
-        #     bottom_notice = driver.find_element(By.CLASS_NAME, "bottom-notice-close")
-        #     driver.execute_script("arguments[0].click();", bottom_notice)
-        #     print(" Баннер закрыт")
-        #     time.sleep(1)
-        # except NoSuchElementException:
-        #     pass
+        try:
+            bottom_notice = driver.find_element(By.CLASS_NAME, "bottom-notice-close")
+            driver.execute_script("arguments[0].click();", bottom_notice)
+            print(" Баннер закрыт")
+            time.sleep(1)
+        except NoSuchElementException:
+            pass
 
         select_buttons = driver.find_elements(By.ID, "paging")
         if not select_buttons:
@@ -67,9 +77,21 @@ def get_pharmacy_info(driver: webdriver.Chrome) -> list[list[str]]:
 
 
 # Переход на следующую страницу
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 def click_next(driver: webdriver.Chrome) -> bool:
     try:
-        next_btn = driver.find_element(By.CSS_SELECTOR, ".table-pagination-next a")
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".table-pagination-next"))
+        )
+
+        next_btns = driver.find_elements(By.CSS_SELECTOR, ".table-pagination-next a")
+        if not next_btns:
+            print(" Кнопка 'Вперёд' не найдена. Страницы закончились.")
+            return False
+
+        next_btn = next_btns[0]
         if not next_btn.is_displayed():
             print(" Кнопка 'Вперёд' не видна. Страницы закончились.")
             return False
@@ -81,6 +103,7 @@ def click_next(driver: webdriver.Chrome) -> bool:
     except Exception as e:
         print(" Ошибка при переходе на следующую страницу:", e)
         return False
+
 
 
 # Чтение всех аптек
@@ -191,6 +214,7 @@ def parser(item_id):
     # print(" Открываем страницу...")
     driver.get(BASE_URL)
     time.sleep(2)
+    print('sleep 2 seconds')
 
     # print("️ Устанавливаем показ по 100...")
     set_items_per_page(driver)
@@ -213,26 +237,27 @@ def parser(item_id):
         writer.writerow(["Название аптеки", "Адрес", "Телефон", "Цена"])
         writer.writerows(result)
 
+    compare_pharmacies()
     print(" Данные сохранены в pharmacies_with_drug.csv")
     driver.quit()
 
-    compare_pharmacies()
 
 
-if __name__ == "__main__":
-    # Получаем item_id из командной строки
-    if len(sys.argv) != 2:
-        print(" Ошибка: требуется передать item_id как аргумент командной строки.")
-        sys.exit(1)
 
-    try:
-        item_id = int(sys.argv[1])  # Преобразуем в int (если это число)
-    except ValueError:
-        print(" Ошибка: item_id должен быть числом.")
-        sys.exit(1)
-
-    # Запускаем парсер с переданным item_id
-    parser(item_id)
+# if __name__ == "__main__":
+#     # Получаем item_id из командной строки
+#     if len(sys.argv) != 2:
+#         print(" Ошибка: требуется передать item_id как аргумент командной строки.")
+#         sys.exit(1)
+#
+#     try:
+#         item_id = int(sys.argv[1])  # Преобразуем в int (если это число)
+#     except ValueError:
+#         print(" Ошибка: item_id должен быть числом.")
+#         sys.exit(1)
+#
+#     # Запускаем парсер с переданным item_id
+#     parser(item_id)
 
 
 
