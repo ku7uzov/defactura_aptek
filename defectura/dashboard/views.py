@@ -201,18 +201,78 @@ def run_parser_and_download(request, item_id):
 
         print('subprocess start')
         # Генерация уникального имени файла для каждого пользователя
-        filename = f"pharmacies_without_drug.xlsx"
+        # Генерация уникального имени файла для каждого пользователя
+        filename = f"pharmacies_without_drug.xlsx"  # Изменено на CSV
+
+
         parser(item_id)
 
-        # Запуск парсера
 
 
         print('process end')
 
+        # Загружаем аптеки
+        pharmacies_df = pd.read_excel(filename)
+        pharmacies = [
+            {
+                'name': row['Название аптеки'],
+                'address': row['Адрес'],
+                'phone': row['Телефон']
+            }
+            for _, row in pharmacies_df.iterrows()
+        ]
+
+        # Загружаем фармацевтов
+        pharmacists = []
+        with open('pharmacevty_csv.csv', 'r', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=';')
+            next(reader)
+            for row in reader:
+                pharmacists.append({
+                    'name': row[0],
+                    'phone': row[1],
+                    'workplace': row[2],
+                    'location': row[3],
+                    'pharmacy_name': row[4]
+                })
+
+        # Сопоставляем
+        result = []
+        matched_pharmacies = set()
+
+        for pharmacist in pharmacists:
+            for pharmacy in pharmacies:
+                if pharmacy['name'] == pharmacist['pharmacy_name']:
+                    result.append({
+                        'Аптека': pharmacy['name'],
+                        'Местоположение аптеки': pharmacy['address'],
+                        'Номер телефона аптеки': pharmacy['phone'],
+                        'ФИО': pharmacist['name'],
+                        'Телефон фармацевта': pharmacist['phone'],
+                    })
+                    matched_pharmacies.add(pharmacy['name'])
+
+        # Добавляем аптеки без фармацевтов
+        for pharmacy in pharmacies:
+            if pharmacy['name'] not in matched_pharmacies:
+                result.append({
+                    'Аптека': pharmacy['name'],
+                    'Местоположение аптеки': pharmacy['address'],
+                    'Номер телефона аптеки': pharmacy['phone'],
+                    'ФИО': '',
+                    'Телефон фармацевта': '',
+                })
+
+        # Создаём CSV
+
         # Путь к файлу после генерации
         if os.path.exists(filename):
             # Отправляем файл для скачивания
-            response = FileResponse(open(filename, 'rb'), as_attachment=True, filename="pharmacies_without_drug.xlsx")
+            output_df = pd.DataFrame(result)
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename=sorted_file.csv'
+            output_df.to_csv(response, index=False, encoding='utf-8', sep=';')
+
             return response
         else:
             return render(request, "dashboard/error.html", {"message": "Файл не найден."})
@@ -311,7 +371,12 @@ def history(request):
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.core.files.storage import default_storage
-
+import csv
+import pandas as pd
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.core.files.storage import default_storage
+from django.http import HttpResponse
 
 @csrf_exempt
 @require_POST
@@ -371,13 +436,14 @@ def sort_file(request):
                 'Телефон фармацевта': '',
             })
 
-    # Создаём Excel
+    # Создаём CSV
     output_df = pd.DataFrame(result)
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=sorted_file.xlsx'
-    output_df.to_excel(response, index=False)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=sorted_file.csv'
+    output_df.to_csv(response, index=False, encoding='utf-8', sep=';')
 
     return response
+
 
 
 import os

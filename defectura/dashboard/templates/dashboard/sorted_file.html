@@ -50,7 +50,7 @@ document.getElementById('file-upload-form').addEventListener('submit', function(
         // Создаём ссылку для скачивания отсортированного файла
         const downloadLink = document.createElement('a');
         downloadLink.href = URL.createObjectURL(blob);
-        downloadLink.download = 'sorted_file.xlsx';
+        downloadLink.download = 'sorted_file.csv';  // Изменено расширение на .csv
         downloadLink.click();
     })
     .catch(error => {

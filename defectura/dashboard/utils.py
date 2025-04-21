@@ -261,28 +261,31 @@ def read_pharmacies_with_drug(file_name):
 # Основной алгоритм
 def compare_pharmacies():
     # Чтение всех аптек
+    # Чтение всех аптек
     all_pharmacies = read_pharmacies('all_pharmacies.csv')
 
     # Чтение аптек с препаратом
     pharmacies_with_drug = read_pharmacies_with_drug('pharmacies_with_drug.csv')
 
-
-    # 🔍 Отладочная информация
-    print(f" Всего строк в all_pharmacies.csv (включая заголовок): {sum(1 for _ in open('all_pharmacies.csv', encoding='utf-8'))}")
-    print(f" Уникальных аптек (по названию и адресу): {len(all_pharmacies)}")
-    print(f" Аптек, в которых есть препарат: {len(pharmacies_with_drug)}")
+    # Отладочная информация
+    print(f"Всего строк в all_pharmacies.csv: {sum(1 for _ in open('all_pharmacies.csv', encoding='utf-8'))}")
+    print(f"Уникальных аптек: {len(all_pharmacies)}")
+    print(f"Аптек с препаратом: {len(pharmacies_with_drug)}")
 
     # Находим аптеки, в которых нет препарата
     pharmacies_without_drug = all_pharmacies - pharmacies_with_drug
 
-    print(f" Всего аптек без препарата: {len(pharmacies_without_drug)}")
+    print(f"Всего аптек без препарата: {len(pharmacies_without_drug)}")
 
-    # Чтение дополнительной информации о всех аптеках (из первого файла)
+    # Чтение информации о всех аптеках
     pharmacies_info = {}
     with open('all_pharmacies.csv', newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
         next(reader, None)  # Пропустить заголовок
         for row in reader:
+            if len(row) < 4:
+                print(f"⚠️ Пропущена строка с недостаточным количеством элементов: {row}")
+                continue
             name = row[0].strip()
             address = row[1].strip()
             work_time = row[2].strip()
@@ -292,24 +295,22 @@ def compare_pharmacies():
                 "phone": phone,
             }
 
-    # Записываем результат в новый CSV
+    # Запись результата в новый CSV
     output_data = []
-    # file_path = "/home/dev/defectura_aptek/defectura/pharmacies_without_drug.csv"
-
     with open('pharmacies_without_drug.csv', "w", newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["Название аптеки", "Адрес", "Телефон", "Время работы", "Цена"])
+        writer.writerow(["Название аптеки", "Адрес", "Телефон", "Время работы"])
 
         for pharmacy in pharmacies_without_drug:
             if pharmacy in pharmacies_info:
                 info = pharmacies_info[pharmacy]
-                row = [pharmacy[0], pharmacy[1], info["phone"], info["work_time"], ""]
+                row = [pharmacy[0], pharmacy[1], info["phone"], info["work_time"]]
                 writer.writerow(row)
                 output_data.append(row)
 
-    print(" Аптеки, в которых нет препарата, сохранены в pharmacies_without_drug.csv")
+    print("Аптеки без препарата сохранены в pharmacies_without_drug.csv")
 
-    #  Добавляем сохранение в Excel
+     # Добавляем сохранение в Excel
     save_to_excel("pharmacies_without_drug.xlsx", output_data, ["Название аптеки", "Адрес", "Телефон", "Время работы"])
 
     #  Сохраняем результат в БД
@@ -373,7 +374,7 @@ def parser(item_id):
 
         with open(file_path, "w", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(["Название аптеки", "Адрес", "Телефон", "Цена"])
+            writer.writerow(["Название аптеки", "Адрес", "Телефон"])
             writer.writerows(result)
 
         compare_pharmacies()

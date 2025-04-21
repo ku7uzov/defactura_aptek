@@ -92,6 +92,7 @@
 
         const url = form.getAttribute("data-url");
         const formData = new FormData(form);
+        const tabletName = form.querySelector('input[name="name"]').value;
 
         overlay.style.display = "flex";
 
@@ -114,7 +115,7 @@
           const downloadUrl = window.URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = downloadUrl;
-          a.download = "defectura.xlsx"; // Или получи из response.headers, если надо
+          a.download = `${tabletName}.csv`;  // Или получи из response.headers, если надо
           document.body.appendChild(a);
           a.click();
           a.remove();
