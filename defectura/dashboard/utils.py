@@ -126,7 +126,7 @@ import sys
 import tempfile
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 import os
 
 def create_driver() -> webdriver.Chrome:
@@ -143,8 +143,8 @@ def create_driver() -> webdriver.Chrome:
     # options.add_argument(f"--user-data-dir={user_data_dir}")
 
     # Запуск драйвера с указанными опциями
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    # driver = webdriver.Chrome(options=options)
+    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = webdriver.Chrome(options=options)
 
     return driver
 
