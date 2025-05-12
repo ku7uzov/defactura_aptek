@@ -292,7 +292,7 @@ def search_tablets(request):
         "tablets": [],
         "warnings": [],
         "dangers": [],
-        "no_results_message": None,
+        "no_results_msessage": None,
         "suggestions": []
     }
 

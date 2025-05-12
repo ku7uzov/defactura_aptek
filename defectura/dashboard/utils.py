@@ -126,25 +126,25 @@ import sys
 import tempfile
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-# from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
 import os
 
 def create_driver() -> webdriver.Chrome:
-    options = Options()
-    # options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    # options = Options()
 
-    # Использование уникального имени для папки
-    # user_data_dir = f"/tmp/chrome_profile_{int(time.time())}"
-    # os.makedirs(user_data_dir, exist_ok=True)
-    #
-    # options.add_argument(f"--user-data-dir={user_data_dir}")
+    chrome_path = "/home/dev/chrome-folder/opt/google/chrome/google-chrome"
+
+    options = Options()
+    options.binary_location = chrome_path
+    # options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument('--window-size=1920,1080')
 
     # Запуск драйвера с указанными опциями
-    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # driver = webdriver.Chrome(options=options)
 
     return driver
 
